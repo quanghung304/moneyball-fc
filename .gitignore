@@ -1,0 +1,31 @@
+# Secrets: never commit API keys
+.env
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.python-version
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Files written by the example notebook
+notebooks/*.csv
+
+# data
+data/raw/
+data/processed/
