@@ -38,8 +38,6 @@ class StatsBombClient:
         Folder where downloaded files are saved (default ``data/raw/``).
     timeout : float, optional
         Seconds to wait for the server before giving up.
-    max_retries : int, optional
-        Number of attempts for each download (not used yet).
     """
 
     def __init__(
