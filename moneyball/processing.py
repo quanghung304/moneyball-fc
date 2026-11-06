@@ -6,7 +6,7 @@ DataFrame without modifying their input.
 
 import pandas as pd
 
-from moneyball.config import EVENT_COLUMNS, EVENT_TYPES, FLAG_COLUMNS
+from moneyball.config import EVENT_COLUMNS, EVENT_TYPES, FLAG_COLUMNS, POSITION_GROUPS
 
 MATCH_COLUMNS = {
     "match_id": "match_id",
@@ -154,6 +154,35 @@ def match_end_minute(events_df):
     return end_minutes.max()
 
 
+def assign_position_group(positions):
+    """Map StatsBomb positions to the groups in ``config.POSITION_GROUPS``.
+
+    Parameters
+    ----------
+    positions : pandas.Series
+        StatsBomb position names, e.g. ``"Center Forward"``.
+
+    Returns
+    -------
+    pandas.Series
+        Group codes (``GK, DEF, MID, WING, FWD``).
+
+    Raises
+    ------
+    ValueError
+        If a position is not in the mapping (the dict needs updating).
+    """
+    # map looks every value up in the dict; a position that is not a key gives NaN.
+    groups = positions.map(POSITION_GROUPS)
+    # a new Boolean Series. True where NaN
+    is_unknown = groups.isna()
+    # filter the elements of groups that are not in POSITION_GROUPS
+    unknown = positions[is_unknown].unique()
+    if len(unknown) > 0:
+        raise ValueError(f"Positions missing from POSITION_GROUPS: {list(unknown)}")
+    return groups
+    
+    
 def lineups_to_appearances(lineups, match_id, end_minute):
     """Compute minutes played and main position for every player of a match.
 
@@ -219,7 +248,51 @@ def lineups_to_appearances(lineups, match_id, end_minute):
     # 6. Put the pieces together.
     appearances = minutes.merge(main_position, on="player_id")
     appearances["player_id"] = appearances["player_id"].astype("int64")
+    appearances["position_group"] = assign_position_group(appearances["position"])
     appearances.insert(0, "match_id", match_id)
 
-    columns = ["match_id", "player_id", "player_name", "team_name", "position", "minutes"]
+    columns = ["match_id", "player_id", "player_name", "team_name",
+               "position", "position_group", "minutes"]
     return appearances[columns]
+
+
+def reconcile_goals(events, matches):
+    """Check that goals counted from events match the official scores.
+
+    Goals from events are shots with outcome ``Goal`` plus ``Own Goal
+    Against`` events. They are compared with
+    ``home_score + away_score`` from the match table, an independent source.
+
+    Parameters
+    ----------
+    events : pandas.DataFrame
+        Events table of all processed matches.
+    matches : pandas.DataFrame
+        Match table restricted to the same matches.
+
+    Returns
+    -------
+    dict
+        ``event_goals`` and ``score_goals`` (season totals) and
+        ``mismatched_matches`` (list of match ids where they differ).
+    """
+    # Goals according to the events. Summing booleans counts the True values.
+    is_goal = (events["type_name"] == "Shot") & (events["shot_outcome_name"] == "Goal")
+    is_own_goal = events["type_name"] == "Own Goal Against"
+    is_any_goal = is_goal | is_own_goal
+    event_goals = is_any_goal.groupby(events["match_id"]).sum()
+
+    # Goals according to the official scores, indexed by match_id like event_goals.
+    score_goals = matches["home_score"] + matches["away_score"]
+    score_goals = score_goals.set_axis(matches["match_id"])
+
+    # A match without any goal event is missing from event_goals: add it with 0.
+    event_goals = event_goals.reindex(score_goals.index, fill_value=0)
+
+    differs = score_goals != event_goals
+    mismatched = score_goals.index[differs].tolist()
+    return {
+        "event_goals": int(event_goals.sum()),
+        "score_goals": int(score_goals.sum()),
+        "mismatched_matches": mismatched,
+    }

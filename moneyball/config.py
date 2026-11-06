@@ -68,3 +68,35 @@ FLAG_COLUMNS = [
     "pass_goal_assist",
     "ball_recovery_recovery_failure",
 ]
+
+# Position groups
+POSITION_GROUP_ORDER = ["GK", "DEF", "MID", "WING", "FWD"]
+
+POSITION_GROUPS = {
+    "Goalkeeper": "GK",
+    "Right Back": "DEF",
+    "Right Center Back": "DEF",
+    "Center Back": "DEF",
+    "Left Center Back": "DEF",
+    "Left Back": "DEF",
+    "Right Wing Back": "DEF",
+    "Left Wing Back": "DEF",
+    "Right Defensive Midfield": "MID",
+    "Center Defensive Midfield": "MID",
+    "Left Defensive Midfield": "MID",
+    "Right Center Midfield": "MID",
+    "Center Midfield": "MID",
+    "Left Center Midfield": "MID",
+    "Right Attacking Midfield": "MID",
+    "Center Attacking Midfield": "MID",
+    "Left Attacking Midfield": "MID",
+    "Right Midfield": "WING",
+    "Left Midfield": "WING",
+    "Right Wing": "WING",
+    "Left Wing": "WING",
+    "Right Center Forward": "FWD",
+    "Left Center Forward": "FWD",
+    "Center Forward": "FWD",
+    "Striker": "FWD",
+    "Secondary Striker": "FWD",
+}
