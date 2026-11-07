@@ -100,3 +100,8 @@ POSITION_GROUPS = {
     "Striker": "FWD",
     "Secondary Striker": "FWD",
 }
+
+# --- Pitch geometry (pitch size: 120 x 80, attacking towards x = 120)
+GOAL_X = 120
+GOAL_Y = 40 # centre of the goal
+GOAL_WIDTH = 8
