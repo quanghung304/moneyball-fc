@@ -4,7 +4,13 @@ Player metrics: shot geometry, progressive actions and the season table.
 
 import numpy as np
 
-from moneyball.config import GOAL_WIDTH, GOAL_X, GOAL_Y
+from moneyball.config import (
+    GOAL_WIDTH, 
+    GOAL_X, 
+    GOAL_Y,
+    PROGRESSIVE_DISTANCE_RATIO,
+    PROGRESSIVE_MIN_X,
+)
 
 
 def add_shot_geometry(shots):
@@ -43,3 +49,33 @@ def add_shot_geometry(shots):
     
     return result
     
+
+def flag_progressive(actions):
+    """Flag passes and carries that move the ball substantially towards goal.
+
+    Definition: the action is a completed Pass or a Carry, it starts at 
+    ``x >= 40`` and its end point is at most 75% as far from the centre of 
+    the goal as its start point.
+
+    Parameters
+    ----------
+    actions : pandas.DataFrame
+        Events with ``type_name, x, y, end_x, end_y, pass_outcome_name``.
+        A pass is completed when ``pass_outcome_name`` is missing; carries
+        never have an outcome.
+
+    Returns
+    -------
+    pandas.Series of bool
+        True for progressive actions, aligned with ``actions``.
+    """
+    distance_before = np.hypot(GOAL_X - actions["x"], GOAL_Y - actions["y"])
+    distance_after = np.hypot(GOAL_X - actions["end_x"], GOAL_Y - actions["end_y"])
+    
+    # 4 boolean Series per each condition that form an successfull progressive action
+    is_pass_or_carry = actions["type_name"].isin(["Pass", "Carry"])
+    is_completed = actions["pass_outcome_name"].isna()
+    starts_outside_own_third = actions["x"] >= PROGRESSIVE_MIN_X
+    gets_much_closer = distance_after <= distance_before * PROGRESSIVE_DISTANCE_RATIO
+    
+    return is_pass_or_carry & is_completed & starts_outside_own_third & gets_much_closer

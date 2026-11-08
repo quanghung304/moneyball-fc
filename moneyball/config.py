@@ -103,5 +103,10 @@ POSITION_GROUPS = {
 
 # --- Pitch geometry (pitch size: 120 x 80, attacking towards x = 120)
 GOAL_X = 120
-GOAL_Y = 40 # centre of the goal
+GOAL_Y = 40  # centre of the goal
 GOAL_WIDTH = 8
+
+# Progressive action: starts beyond own deep third and ends at most 75% of
+# the previous distance to the centre of the goal.
+PROGRESSIVE_MIN_X = 40
+PROGRESSIVE_DISTANCE_RATIO = 0.75
