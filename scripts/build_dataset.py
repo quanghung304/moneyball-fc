@@ -19,6 +19,7 @@ from moneyball.processing import (  # noqa: E402
     matches_to_dataframe,
     reconcile_goals,
 )
+from moneyball.metrics import build_player_season  # noqa: E402
 
 logger = logging.getLogger("build_dataset")
 
@@ -81,11 +82,14 @@ def main():
     logger.info("Reconciliation: %d goals from events vs %d from match scores",
                 check["event_goals"], check["score_goals"])
     
+    player_season = build_player_season(events, appearances)
+    
     args.output_dir.mkdir(parents=True, exist_ok=True)
     tables = {
         "matches": matches, 
         "events": events, 
-        "appearances": appearances
+        "appearances": appearances,
+        "player_season": player_season,
     }
     
     for name, table in tables.items():
