@@ -44,6 +44,7 @@ def matches_to_dataframe(matches):
     df["match_date"] = pd.to_datetime(df["match_date"])
     return df.sort_values(["match_date", "match_id"]).reset_index(drop=True)
 
+
 def _split_coordinates(points):
     """Split a column of ``[x, y]`` lists into two float Series."""
     points = points.astype(object)
@@ -70,36 +71,36 @@ def events_to_dataframe(events, match_id):
         present and filled with NaN, so every match has the same schema.
     """
     df = pd.json_normalize(events, sep="_")
-    
+
     # reindex keeps a fixed schema
     df = df.reindex(columns=EVENT_COLUMNS)
-    
+
     # keep only the event types to analyse
     is_wanted_type = df["type_name"].isin(EVENT_TYPES)
     df = df[is_wanted_type].copy()
-    
+
     df["x"], df["y"] = _split_coordinates(df["location"])
-    
+
     # A row is either a Pass or a Carry, never both: one end column suffices.
     # combine_first takes the pass end, and the carry end where it is missing.
     end_location = df["pass_end_location"].combine_first(df["carry_end_location"])
     df["end_x"], df["end_y"] = _split_coordinates(end_location)
-    
+
     df = df.drop(columns=LIST_COLUMNS)
-    
+
     # StatsBomb only writes these flags when they are true; absent means False.
     # eq(True) gives True for True and False for NaN.
     df[FLAG_COLUMNS] = df[FLAG_COLUMNS].eq(True)
-    
+
     # Half End rows have no player: nullable integers keep ids as integers.
     df["player_id"] = df["player_id"].astype("Int64")
-    
+
     df["match_id"] = match_id
     df = df.reset_index(drop=True)
-    
+
     return df
-    
-    
+
+
 def clock_to_minutes(clock):
     """Convert ``"mm:ss"`` clock into decimal minutes.
 
@@ -145,11 +146,11 @@ def match_end_minute(events_df):
     half_end = events_df[events_df["type_name"] == "Half End"]
     if half_end.empty:
         raise ValueError("No 'Half End' event found: cannot determine match length.")
-    
+
     # Every period has a Half End row for each team: keep those of the last period.
     last_period_number = half_end["period"].max()
     last_period = half_end[half_end["period"] == last_period_number]
-    
+
     end_minutes = last_period["minute"] + last_period["second"] / SECONDS_PER_MINUTE
     return end_minutes.max()
 
@@ -181,8 +182,8 @@ def assign_position_group(positions):
     if len(unknown) > 0:
         raise ValueError(f"Positions missing from POSITION_GROUPS: {list(unknown)}")
     return groups
-    
-    
+
+
 def lineups_to_appearances(lineups, match_id, end_minute):
     """Compute minutes played and main position for every player of a match.
 
@@ -218,20 +219,20 @@ def lineups_to_appearances(lineups, match_id, end_minute):
         spells["team_name"] = team["team_name"]
         frames.append(spells)
     spells = pd.concat(frames, ignore_index=True)
-    
+
     # 2. Length of each spell in minutes.
     # map: call the function for each spell["from"]
     start = spells["from"].map(clock_to_minutes)
-    
+
     # na_action="ignore" skips the None clocks instead of calling clock_to_minutes(None);
     # they stay NaN and are then set to the final whistle.
     end = spells["to"].map(clock_to_minutes, na_action="ignore")
     end = end.fillna(end_minute)
-    
+
     # clip(lower=0) turns a negative length into 0. Cuz clock restarts at 45:00 in the second half,
     # while the first half may exceed 45:00
     spells["duration"] = (end - start).clip(lower=0)
-    
+
     # 3. Minutes per (player, position).
     keys = ["player_id", "player_name", "team_name"]
     per_position = spells.groupby(keys + ["position"], as_index=False)["duration"].sum()
@@ -251,8 +252,15 @@ def lineups_to_appearances(lineups, match_id, end_minute):
     appearances["position_group"] = assign_position_group(appearances["position"])
     appearances.insert(0, "match_id", match_id)
 
-    columns = ["match_id", "player_id", "player_name", "team_name",
-               "position", "position_group", "minutes"]
+    columns = [
+        "match_id",
+        "player_id",
+        "player_name",
+        "team_name",
+        "position",
+        "position_group",
+        "minutes",
+    ]
     return appearances[columns]
 
 

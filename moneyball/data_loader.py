@@ -40,12 +40,7 @@ class StatsBombClient:
         Seconds to wait for the server before giving up.
     """
 
-    def __init__(
-        self,
-        base_url=BASE_URL,
-        cache_dir=RAW_DIR,
-        timeout=TIMEOUT_SECONDS
-    ):
+    def __init__(self, base_url=BASE_URL, cache_dir=RAW_DIR, timeout=TIMEOUT_SECONDS):
         self.base_url = base_url
         self.cache_dir = Path(cache_dir)
         self.timeout = timeout
@@ -100,7 +95,7 @@ class StatsBombClient:
             raise StatsBombError(
                 f"StatsBomb server returned HTTP {status} for {relative_path}"
             ) from error
-            
+
         except requests.exceptions.Timeout as error:
             raise StatsBombError(
                 f"StatsBomb did not answer within {self.timeout} s: {relative_path}"
