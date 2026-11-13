@@ -2,16 +2,24 @@
 Player metrics: shot geometry, progressive actions and the season table.
 """
 
+import logging
+
 import numpy as np
 import pandas as pd
 
 from moneyball.config import (
-    GOAL_WIDTH, 
-    GOAL_X, 
+    GOAL_WIDTH,
+    GOAL_X,
     GOAL_Y,
+    MIN_MINUTES,
+    PER90_COLUMNS,
     PROGRESSIVE_DISTANCE_RATIO,
     PROGRESSIVE_MIN_X,
 )
+
+logger = logging.getLogger(__name__)
+
+MINUTES_PER_MATCH = 90
 
 
 def add_shot_geometry(shots):
@@ -20,7 +28,7 @@ def add_shot_geometry(shots):
     With ``dx = 120 - x``, ``dy = y - 40`` and goal width ``w = 8``:
 
     - ``distance = sqrt(dx^2 + dy^2)``
-    - angle = the angle (in radians) between the lines from the shot to each post. 
+    - angle = the angle (in radians) between the lines from the shot to each post.
     arctan2 handles a negative denominator for shots taken very close to goal.
 
     Parameters
@@ -40,22 +48,22 @@ def add_shot_geometry(shots):
     dx = GOAL_X - shots["x"]
     dy = shots["y"] - GOAL_Y
     distance = np.hypot(dx, dy)
-    
+
     half_width = GOAL_WIDTH / 2
     angle = np.arctan2(GOAL_WIDTH * dx, dx**2 + dy**2 - half_width**2)
-    
+
     result = shots.copy()
     result["distance"] = distance
     result["angle"] = angle
-    
+
     return result
-    
+
 
 def flag_progressive(actions):
     """Flag passes and carries that move the ball substantially towards goal.
 
-    Definition: the action is a completed Pass or a Carry, it starts at 
-    ``x >= 40`` and its end point is at most 75% as far from the centre of 
+    Definition: the action is a completed Pass or a Carry, it starts at
+    ``x >= 40`` and its end point is at most 75% as far from the centre of
     the goal as its start point.
 
     Parameters
@@ -72,13 +80,13 @@ def flag_progressive(actions):
     """
     distance_before = np.hypot(GOAL_X - actions["x"], GOAL_Y - actions["y"])
     distance_after = np.hypot(GOAL_X - actions["end_x"], GOAL_Y - actions["end_y"])
-    
+
     # 4 boolean Series per each condition that form an successfull progressive action
     is_pass_or_carry = actions["type_name"].isin(["Pass", "Carry"])
     is_completed = actions["pass_outcome_name"].isna()
     starts_outside_own_third = actions["x"] >= PROGRESSIVE_MIN_X
     gets_much_closer = distance_after <= distance_before * PROGRESSIVE_DISTANCE_RATIO
-    
+
     return is_pass_or_carry & is_completed & starts_outside_own_third & gets_much_closer
 
 
@@ -118,19 +126,19 @@ def build_player_season(events, appearances):
         matches=("match_id", "nunique"),
         minutes=("minutes", "sum"),
     )
-    
+
     players["team_name"] = _main_value(appearances, "team_name")
     players["position"] = _main_value(appearances, "position")
     players["position_group"] = _main_value(appearances, "position_group")
-    
+
     # drop rows have no player. Eg: Half End
     events = events[events["player_id"].notna()]
     # rows have no player_id (NaN) make the column type float64. Make it plain integers
     events = events.astype({"player_id": "int64"})
     event_type = events["type_name"]
-    
+
     # 2. Finishing. npxg excludes penalties: they are a fixed ~0.76 xG chance
-    # and say little about how good a player 
+    # and say little about how good a player
     shots = events[event_type == "Shot"].copy()
     shots["is_goal"] = shots["shot_outcome_name"] == "Goal"
     shots["is_penalty"] = shots["shot_type_name"] == "Penalty"
@@ -140,7 +148,7 @@ def build_player_season(events, appearances):
     shots["is_penalty_goal"] = shots["is_goal"] & shots["is_penalty"]
     # where keeps the xG where the condition is True and puts 0 elsewhere.
     shots["npxg"] = shots["shot_statsbomb_xg"].where(~shots["is_penalty"], 0.0)
-    
+
     shooting = shots.groupby("player_id").agg(
         shots=("id", "size"),
         np_shots=("is_np_shot", "sum"),
@@ -150,13 +158,13 @@ def build_player_season(events, appearances):
         xg=("shot_statsbomb_xg", "sum"),
         npxg=("npxg", "sum"),
     )
-    
+
     # 3. Creation: credit the passer with the xG of the shot it set up.
     passes = events[event_type == "Pass"].copy()
     passers = passes[["id", "player_id"]]
     # merge each shot with its passer. There gonna be 2 "player_id" columns,
     # so we add "_shooter" suffix for shooters, leave "player_id" for passers
-    assisted =  shots.merge(
+    assisted = shots.merge(
         passers,
         left_on="shot_key_pass_id",
         right_on="id",
@@ -165,7 +173,7 @@ def build_player_season(events, appearances):
     expected_assists = assisted.groupby("player_id").agg(
         xa=("shot_statsbomb_xg", "sum")
     )
-    
+
     # A key pass is the last pass before a shot (goal or not).
     passes["is_key_pass"] = passes["pass_shot_assist"] | passes["pass_goal_assist"]
     pass_counts = passes.groupby("player_id").agg(
@@ -174,7 +182,7 @@ def build_player_season(events, appearances):
     )
     # how="outer" keeps players found in only one of the two tables.
     creation = expected_assists.join(pass_counts, how="outer")
-    
+
     # 4. Progression and defending: one True/False column per action type,
     # then the sum per player counts the actions.
     progressive = flag_progressive(events)
@@ -182,7 +190,7 @@ def build_player_season(events, appearances):
     is_completed_dribble = is_dribble & (events["dribble_outcome_name"] == "Complete")
     is_recovery = event_type == "Ball Recovery"
     is_successful_recovery = is_recovery & ~events["ball_recovery_recovery_failure"]
-    
+
     action_flags = pd.DataFrame(
         {
             "player_id": events["player_id"],
@@ -195,21 +203,58 @@ def build_player_season(events, appearances):
         }
     )
     actions = action_flags.groupby("player_id").sum()
-    
+
     # 5. Left joins on the minutes table: a player with no shots has 0 shots,
-    # not "unknown", so we have to fillna(0). Also change the columns with NaN 
+    # not "unknown", so we have to fillna(0). Also change the columns with NaN
     # values to int, except expected column.
     table = players.join([shooting, creation, actions], how="left")
     count_columns = [c for c in table.columns if c not in players.columns]
     table[count_columns] = table[count_columns].fillna(0)
     int_columns = [c for c in count_columns if c not in ("xg", "npxg", "xa")]
     table[int_columns] = table[int_columns].astype("int64")
-    
+
     # Drop players who never got on the pitch
     table = table[table["minutes"] > 0]
     table = table.reset_index()
     table["player_id"] = table["player_id"].astype("int64")
     return table
-     
-    
-    
+
+
+def add_per90(table, columns=PER90_COLUMNS, min_minutes=MIN_MINUTES):
+    """Keep regular players and express their totals per 90 minutes.
+
+    Players under ``min_minutes`` are dropped.
+
+    Parameters
+    ----------
+    table : pandas.DataFrame
+        Output of ``build_player_season``.
+    columns : list of str, optional
+        Season totals to convert; each gets a ``<column>_p90`` twin.
+    min_minutes : float, optional
+        Minimum minutes played to be kept.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Filtered copy with the per-90 columns plus ``npxg_per_shot`` (shot
+        quality, 0 for players without non-penalty shots) and
+        ``goals_minus_npxg`` (non-penalty goals above expectation).
+    """
+    eligible = table[table["minutes"] >= min_minutes].copy()
+    logger.info(
+        "add_per90: kept %d players with >= %s minutes, excluded %d",
+        len(eligible),
+        min_minutes,
+        len(table) - len(eligible),
+    )
+
+    # div(..., axis=0) divides every row by that row's minutes.
+    per90 = eligible[columns].div(eligible["minutes"], axis=0) * MINUTES_PER_MATCH
+    per90_columns = [f"{column}_p90" for column in columns]
+    eligible[per90_columns] = per90.to_numpy()
+
+    np_shots = eligible["np_shots"].replace(0, np.nan)
+    eligible["npxg_per_shot"] = (eligible["npxg"] / np_shots).fillna(0.0)
+    eligible["goals_minus_npxg"] = eligible["np_goals"] - eligible["npxg"]
+    return eligible.reset_index(drop=True)

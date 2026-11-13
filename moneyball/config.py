@@ -110,3 +110,24 @@ GOAL_WIDTH = 8
 # the previous distance to the centre of the goal.
 PROGRESSIVE_MIN_X = 40
 PROGRESSIVE_DISTANCE_RATIO = 0.75
+
+# --- Analysis thresholds
+MIN_MINUTES = 900  # ~10 full matches
+
+# --- Metrics
+PER90_COLUMNS = [
+    "goals",
+    "np_goals",
+    "shots",
+    "np_shots",
+    "npxg",
+    "xa",
+    "key_passes",
+    "assists",
+    "progressive_passes",
+    "progressive_carries",
+    "dribbles_completed",
+    "pressures",
+    "ball_recoveries",
+    "interceptions",
+]
