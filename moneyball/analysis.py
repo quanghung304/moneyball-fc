@@ -13,6 +13,7 @@ a new DataFrame or dict
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from moneyball.config import (
     FINISHING_INTERVAL,
@@ -210,3 +211,48 @@ def finishing_table(
     table = info.merge(table, on="player_id")
     table = table.sort_values("p_at_least")
     return table.reset_index(drop=True)
+
+
+# --- SQ2: output percentiles ---------------------------------------------
+
+
+def position_percentiles(table, metrics):
+    """Rank every player against his position group on each metric.
+
+    Parameters
+    ----------
+    table : pandas.DataFrame
+        Per-90 player table from ``add_per90``.
+    metrics : list of str
+        Columns to rank.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Long format, one row per (player, metric): ``player_id,
+        player_name, team_name, position_group, metric, value, percentile``
+        (0-100) and ``zscore`` (standard deviations from the group mean).
+    """
+    # 1. Wide tables: one row per player, one column per metric.
+    by_group = table.groupby("position_group")[metrics]
+    # rank(pct=True) gives each player's rank within his group as a percentile
+    percentiles = by_group.rank(pct=True) * 100
+    # transform returns one value per row (unlike agg, one per group).
+    # A metric with zero spread in a group gives NaN z-scores: set them to 0.
+    zscores = by_group.transform(stats.zscore).fillna(0.0)
+
+    # Both tables keep the row index of table: join adds the matching player_id.
+    percentiles = percentiles.join(table["player_id"])
+    zscores = zscores.join(table["player_id"])
+
+    # 2. Long tables (melt): one row per (player, metric)
+    id_columns = ["player_id", "player_name", "team_name", "position_group"]
+    long_values = table.melt(id_vars=id_columns, value_vars=metrics, var_name="metric")
+    long_pct = percentiles.melt(id_vars="player_id", var_name="metric", value_name="percentile")
+    long_z = zscores.melt(id_vars="player_id", var_name="metric", value_name="zscore")
+
+    # 3. Put value, percentile and z-score side by side.
+    keys = ["player_id", "metric"]
+    result = long_values.merge(long_pct, on=keys)
+    result = result.merge(long_z, on=keys)
+    return result
