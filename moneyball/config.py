@@ -113,6 +113,10 @@ PROGRESSIVE_DISTANCE_RATIO = 0.75
 
 # --- Analysis thresholds
 MIN_MINUTES = 900  # ~10 full matches
+N_SIMULATIONS = 10000
+RANDOM_SEED = 42
+MIN_SHOTS = 20  # minimum non-penalty shots for the finishing simulation
+FINISHING_INTERVAL = (5, 95)  # percentile band. From 5-95: normal
 
 # --- Metrics
 PER90_COLUMNS = [
