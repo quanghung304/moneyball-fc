@@ -20,6 +20,7 @@ from moneyball.config import (
     MIN_SHOTS,
     N_SIMULATIONS,
     RANDOM_SEED,
+    SIMILARITY_METRICS,
 )
 
 # --- SQ1: finishing -------------------------------------------------------
@@ -190,7 +191,7 @@ def finishing_table(
                 "low": low,
                 "high": high,
                 # mean of boolean array: the share of True values
-                "p_at_least": (sims >= actual).mean(),  
+                "p_at_least": (sims >= actual).mean(),
                 "p_at_most": (sims <= actual).mean(),
             }
         )
@@ -248,7 +249,9 @@ def position_percentiles(table, metrics):
     # 2. Long tables (melt): one row per (player, metric)
     id_columns = ["player_id", "player_name", "team_name", "position_group"]
     long_values = table.melt(id_vars=id_columns, value_vars=metrics, var_name="metric")
-    long_pct = percentiles.melt(id_vars="player_id", var_name="metric", value_name="percentile")
+    long_pct = percentiles.melt(
+        id_vars="player_id", var_name="metric", value_name="percentile"
+    )
     long_z = zscores.melt(id_vars="player_id", var_name="metric", value_name="zscore")
 
     # 3. Put value, percentile and z-score side by side.
@@ -256,3 +259,114 @@ def position_percentiles(table, metrics):
     result = long_values.merge(long_pct, on=keys)
     result = result.merge(long_z, on=keys)
     return result
+
+
+# --- SQ3: similarity ------------------------------------------------------
+
+
+def find_player(table, player_name):
+    """Return the row of a player, raising a clear error if absent.
+
+    Parameters
+    ----------
+    table : pandas.DataFrame
+        Player table with a ``player_name`` column.
+    player_name : str
+        Exact player name as written by StatsBomb.
+
+    Returns
+    -------
+    pandas.Series
+        The player's row.
+
+    Raises
+    ------
+    ValueError
+        If no player has this name (e.g. typo or below the minutes threshold).
+    """
+    matches = table[table["player_name"] == player_name]
+    if matches.empty:
+        raise ValueError(
+            f"Player '{player_name}' not found (check spelling or the minutes threshold)."
+        )
+    return matches.iloc[0]
+
+
+def similar_players(
+    table, target_name, metrics=SIMILARITY_METRICS, top_n=10, same_group=True
+):
+    """Find the players whose statistical profile is closest to a target.
+
+    Each metric is standardised (z-score) over the comparison pool so that
+    metrics on large scales (pressures per 90) do not dominate small ones
+    (npxG per shot). The similarity is the cosine of the angle between the
+    standardised vectors: 1 = same profile shape, 0 = unrelated, -1 = opposite.
+
+    Parameters
+    ----------
+    table : pandas.DataFrame
+        Per-90 player table from ``add_per90``.
+    target_name : str
+        Player to compare against.
+    metrics : list of str, optional
+        Columns forming the profile vector.
+    top_n : int, optional
+        Number of players returned (``None`` for all).
+    same_group : bool, optional
+        If True, only compare with the target's position group.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The ``top_n`` most similar players (target excluded), sorted by
+        decreasing ``similarity``, with their metric values.
+
+    Raises
+    ------
+    ValueError
+        If ``target_name`` is not in ``table``.
+    """
+    target = find_player(table, target_name)
+    pool = table
+    if same_group:
+        pool = table[table["position_group"] == target["position_group"]]
+    pool = pool.reset_index(drop=True)
+
+    # Standardise: z = (x - mean) / std, column by column
+    values = pool[metrics].to_numpy(dtype=float)
+    mean = values.mean(axis=0)
+    std = values.std(axis=0)
+    # A constant column would divide by zero; nan_to_num turns it into zeros.
+    standardised = np.nan_to_num((values - mean) / std)
+
+    # The target's own row. pool was reset to 0, 1, 2..., so the index
+    # label is also the row position in ``standardised``.
+    is_target = pool["player_id"] == target["player_id"]
+    target_row = pool.index[is_target][0]
+    target_vector = standardised[target_row]
+
+    # Cosine similarity = (a . b) / (|a| * |b|) for every player at once.
+    # @ is the dot product of each row with the target vector.
+    dot_products = standardised @ target_vector
+    norms = np.linalg.norm(standardised, axis=1) * np.linalg.norm(target_vector)
+    # A zero vector has no direction: dividing by NaN gives a NaN similarity.
+    norms = np.where(norms == 0, np.nan, norms)
+    similarity = dot_products / norms
+
+    # Most similar first, without the target himself.
+    result = pool.assign(similarity=similarity)
+    result = result[result["player_id"] != target["player_id"]]
+    result = result.sort_values("similarity", ascending=False)
+
+    columns = [
+        "player_id",
+        "player_name",
+        "team_name",
+        "position_group",
+        "minutes",
+        "similarity",
+    ]
+    result = result[columns + list(metrics)]
+    # head(None) keeps every row.
+    result = result.head(top_n)
+    return result.reset_index(drop=True)

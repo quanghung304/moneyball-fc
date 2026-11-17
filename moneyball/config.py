@@ -135,3 +135,15 @@ PER90_COLUMNS = [
     "ball_recoveries",
     "interceptions",
 ]
+
+# Style vector used for SQ3 similarity
+SIMILARITY_METRICS = [
+    "npxg_p90",
+    "np_shots_p90",
+    "npxg_per_shot",
+    "xa_p90",
+    "key_passes_p90",
+    "progressive_carries_p90",
+    "dribbles_completed_p90",
+    "pressures_p90",
+]
