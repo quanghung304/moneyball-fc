@@ -8,6 +8,7 @@ from pathlib import Path
 BASE_URL = "https://raw.githubusercontent.com/statsbomb/open-data/master/data"
 COMPETITION_ID = 12
 SEASON_ID = 27
+DATA_CREDIT = "Data: StatsBomb Open Data"
 
 # Folders, built from the location of this file so they work from anywhere
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -147,3 +148,8 @@ SIMILARITY_METRICS = [
     "dribbles_completed_p90",
     "pressures_p90",
 ]
+
+# --- Chart style
+HIGHLIGHT_COLOR = "#0072B2"  # blue: player(s) of interest
+SECOND_COLOR = "#E69F00"  # orange: comparison player / goals
+MUTED_COLOR = "#B0B0B0"  # grey: everyone else
