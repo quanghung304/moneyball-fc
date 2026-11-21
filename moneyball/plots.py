@@ -12,9 +12,13 @@ from moneyball.config import (
     DATA_CREDIT,
     FINISHING_INTERVAL,
     HIGHLIGHT_COLOR,
+    METRIC_LABELS,
     MUTED_COLOR,
     SECOND_COLOR,
 )
+
+PLOTLY_TEMPLATE = "plotly_white"
+TOP_PERCENTILE = 80
 
 
 def _credit_plotly(fig):
@@ -102,7 +106,7 @@ def goals_vs_xg_scatter(table, highlight=()):
         title=f"{top['player_name']} beat his npxG by the widest margin ({top['diff']:+.1f} goals)",
         xaxis_title="Non-penalty expected goals (npxG, season total)",
         yaxis_title="Non-penalty goals (season total)",
-        template="plotly_white",
+        template=PLOTLY_TEMPLATE,
         legend={"orientation": "h", "y": 1.02, "x": 0},
     )
     return _credit_plotly(fig)
@@ -153,14 +157,13 @@ def simulation_histogram(sims, actual, player_name):
 
     ax.set_xlabel("Non-penalty goals in a simulated season")
     ax.set_ylabel(f"Number of simulations (of {len(sims):,})")
-    title = ""
+    
     if actual >= sims.mean():
         share = (sims >= actual).mean()
         title = (
             f"{player_name}: {actual} goals vs {sims.mean():.1f} expected; "
             f"{share:.1%} of simulations reach {actual}"
         )
-
     else:
         share = (sims <= actual).mean()
         title = (
@@ -177,3 +180,64 @@ def simulation_histogram(sims, actual, player_name):
     fig.text(0.99, 0.01, DATA_CREDIT, ha="right", fontsize=8, color="grey")
     fig.tight_layout()
     return fig
+
+
+def _label(metric):
+    """Return a readable axis label for a metric column."""
+    return METRIC_LABELS.get(metric, metric.replace("_", " "))
+
+
+def percentile_bars(percentiles, player_name):
+    """Show a player's percentile in his position group for each metric.
+
+    Parameters
+    ----------
+    percentiles : pandas.DataFrame
+        Long table from ``analysis.position_percentiles``.
+    player_name : str
+        Player to show.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Horizontal bars from 0 to 100; bars at or above the 80th
+        percentile are coloured and the value is printed on every bar.
+
+    Raises
+    ------
+    ValueError
+        If the player is not in ``percentiles``.
+    """
+    rows = percentiles[percentiles["player_name"] == player_name]
+    if rows.empty:
+        raise ValueError(f"'{player_name}' not found in the percentile table.")
+
+    # reverse the rows (iloc[::-1]) so the most important metrics (goals, shots...)
+    # end up at the top. Because Plotly draws the first row at the bottom (y=0)
+    rows = rows.iloc[::-1]
+    group = rows["position_group"].iloc[0]
+    strong = rows["percentile"] >= TOP_PERCENTILE
+    bar_colors = np.where(strong, HIGHLIGHT_COLOR, MUTED_COLOR)
+
+    fig = go.Figure(
+        go.Bar(
+            x=rows["percentile"],
+            y=rows["metric"].map(_label),
+            orientation="h",
+            marker_color=bar_colors,
+            text=rows["percentile"].round(0).astype(int),
+            textposition="outside",
+            customdata=rows["value"],
+            hovertemplate="%{y}: %{customdata:.2f} (percentile %{x:.0f})<extra></extra>",
+        )
+    )
+
+    fig.add_vline(x=TOP_PERCENTILE, line_dash="dot", line_color="grey")
+    fig.update_layout(
+        title=f"{player_name}: top 20% of {group} players on {strong.sum()} of {len(rows)} metrics",
+        xaxis={"title": f"Percentile within {group} group (0-100)", "range": [0, 108]},
+        template=PLOTLY_TEMPLATE,
+        height=120 + 40 * len(rows),
+        margin={"l": 10},
+    )
+    return _credit_plotly(fig)

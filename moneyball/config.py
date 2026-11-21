@@ -139,6 +139,7 @@ PER90_COLUMNS = [
 
 # Style vector used for SQ3 similarity
 SIMILARITY_METRICS = [
+    "np_goals_p90",
     "npxg_p90",
     "np_shots_p90",
     "npxg_per_shot",
@@ -148,6 +149,20 @@ SIMILARITY_METRICS = [
     "dribbles_completed_p90",
     "pressures_p90",
 ]
+
+METRIC_LABELS = {
+    "np_goals_p90": "Non-penalty goals per 90",
+    "npxg_p90": "npxG per 90",
+    "np_shots_p90": "Non-penalty shots per 90",
+    "npxg_per_shot": "npxG per shot",
+    "xa_p90": "xA per 90",
+    "key_passes_p90": "Key passes per 90",
+    "progressive_passes_p90": "Progressive passes per 90",
+    "progressive_carries_p90": "Progressive carries per 90",
+    "dribbles_completed_p90": "Completed dribbles per 90",
+    "pressures_p90": "Pressures per 90",
+    "goals_minus_npxg": "Non-penalty goals minus npxG",
+}
 
 # --- Chart style
 HIGHLIGHT_COLOR = "#0072B2"  # blue: player(s) of interest
