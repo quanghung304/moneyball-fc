@@ -241,3 +241,52 @@ def percentile_bars(percentiles, player_name):
         margin={"l": 10},
     )
     return _credit_plotly(fig)
+
+
+def radar_comparison(percentiles, players, metrics):
+    """Overlay several players' percentile profiles on a radar chart.
+
+    Parameters
+    ----------
+    percentiles : pandas.DataFrame
+        Long table from ``analysis.position_percentiles``.
+    players : sequence of str
+        Player names; the first one is drawn in the highlight colour.
+    metrics : list of str
+        Metrics to use as axes, in order.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+    """
+    colors = [HIGHLIGHT_COLOR, SECOND_COLOR, "#009E73", "#CC79A7", "#56B4E9"]
+    dashes = ["solid", "dash", "dot", "dashdot", "longdash"]
+    labels = [_label(metric) for metric in metrics]
+    
+    fig = go.Figure()
+    for i, name in enumerate(players):
+        rows = percentiles[percentiles["player_name"] == name]
+        # reindex puts the percentiles in the order of ``metrics``.
+        rows = rows.set_index("metric").reindex(metrics)
+        values = rows["percentile"].tolist()
+        color = colors[i % len(colors)]
+        dash = dashes[i % len(dashes)]
+        fig.add_trace(
+            go.Scatterpolar(
+                r=values + values[:1],  # repeat the first point to close the shape
+                theta=labels + labels[:1],
+                name=name,
+                line={"color": color, "dash": dash},
+                fill="toself" if i == 0 else None,
+                opacity=0.85,
+            )
+        )
+    fig.update_layout(
+        title=f"Percentile profile: {' vs '.join(players)}",
+        polar={"radialaxis": {"range": [0, 100], "tickvals": [20, 40, 60, 80, 100]}},
+        template=PLOTLY_TEMPLATE,
+        legend={"orientation": "h", "y": -0.1},
+    )
+    return _credit_plotly(fig)
+
+
