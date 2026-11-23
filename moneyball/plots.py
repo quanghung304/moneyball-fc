@@ -157,7 +157,7 @@ def simulation_histogram(sims, actual, player_name):
 
     ax.set_xlabel("Non-penalty goals in a simulated season")
     ax.set_ylabel(f"Number of simulations (of {len(sims):,})")
-    
+
     if actual >= sims.mean():
         share = (sims >= actual).mean()
         title = (
@@ -262,7 +262,7 @@ def radar_comparison(percentiles, players, metrics):
     colors = [HIGHLIGHT_COLOR, SECOND_COLOR, "#009E73", "#CC79A7", "#56B4E9"]
     dashes = ["solid", "dash", "dot", "dashdot", "longdash"]
     labels = [_label(metric) for metric in metrics]
-    
+
     fig = go.Figure()
     for i, name in enumerate(players):
         rows = percentiles[percentiles["player_name"] == name]
@@ -288,5 +288,3 @@ def radar_comparison(percentiles, players, metrics):
         legend={"orientation": "h", "y": -0.1},
     )
     return _credit_plotly(fig)
-
-

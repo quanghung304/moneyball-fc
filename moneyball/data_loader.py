@@ -8,14 +8,17 @@ download and parsing problems are reported as ``StatsBombError``.
 
 import json
 from pathlib import Path
+import pandas as pd
 
 import requests
 
 from moneyball.config import (
     BASE_URL,
     COMPETITION_ID,
+    PROCESSED_DIR,
     RAW_DIR,
     SEASON_ID,
+    TABLE_NAMES,
     TIMEOUT_SECONDS,
 )
 
@@ -209,3 +212,36 @@ class StatsBombClient:
             Two dicts, one per team, each with a ``lineup`` list of players.
         """
         return self.get_json(f"lineups/{match_id}.json")
+
+
+def load_tables(processed_dir=PROCESSED_DIR):
+    """Read the processed Parquet tables built by ``scripts/build_dataset.py``.
+
+    Parameters
+    ----------
+    processed_dir : pathlib.Path, optional
+        Folder containing ``matches.parquet``, ``events.parquet``,
+        ``appearances.parquet`` and ``player_season.parquet``.
+
+    Returns
+    -------
+    dict of str to pandas.DataFrame
+        One DataFrame per table name in ``config.TABLE_NAMES``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If any table is missing, with a hint on how to build it.
+    """
+    processed_dir = Path(processed_dir)
+    missing = [
+        name for name in TABLE_NAMES if not (processed_dir / f"{name}.parquet").exists()
+    ]
+    if missing:
+        raise FileNotFoundError(
+            f"Missing processed tables {missing} in {processed_dir}. "
+            "Run `python scripts/build_dataset.py` first."
+        )
+    return {
+        name: pd.read_parquet(processed_dir / f"{name}.parquet") for name in TABLE_NAMES
+    }

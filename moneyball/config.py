@@ -16,6 +16,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
+TABLE_NAMES = ("matches", "events", "appearances", "player_season")
+
 # Downloads
 TIMEOUT_SECONDS = 30
 
@@ -118,6 +120,16 @@ N_SIMULATIONS = 10000
 RANDOM_SEED = 42
 MIN_SHOTS = 20  # minimum non-penalty shots for the finishing simulation
 FINISHING_INTERVAL = (5, 95)  # percentile band. From 5-95: normal
+TARGET_PLAYER = "Gonzalo Gerardo Higuaín"
+# Recommendation chosen from SQ1-SQ3: same position group, >= 80th percentile
+# on npxG/90, not at a top-5 club, most similar with target player.
+SHORTLIST = (
+    "Josef Alexander Martínez Mencia",
+    "Duván Esteban Zapata Banguera",
+    "Leonardo Pavoletti",
+    "Luca Toni",
+    "Carlos Arturo Bacca Ahumada",
+)
 
 # --- Metrics
 PER90_COLUMNS = [
@@ -135,6 +147,19 @@ PER90_COLUMNS = [
     "pressures",
     "ball_recoveries",
     "interceptions",
+]
+
+# Attacking profile used for SQ2 percentiles and the radar chart.
+PERCENTILE_METRICS = [
+    "np_goals_p90",
+    "npxg_p90",
+    "np_shots_p90",
+    "npxg_per_shot",
+    "xa_p90",
+    "key_passes_p90",
+    "progressive_carries_p90",
+    "dribbles_completed_p90",
+    "pressures_p90",
 ]
 
 # Style vector used for SQ3 similarity
