@@ -11,6 +11,7 @@ st.set_page_config(page_title="Moneyball FC", page_icon=":material/sports_soccer
 
 pages = [
     st.Page("pages/overview.py", title="Overview", icon=":material/home:", default=True),
+    st.Page("pages/player_profile.py", title="Player profile (SQ1-SQ2)", icon=":material/person:"),
 ]
 
 with st.sidebar:

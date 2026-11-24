@@ -55,3 +55,15 @@ def get_shots():
 def get_finishing(threshold):
     """SQ1 finishing table for players above ``threshold`` minutes."""
     return finishing_table(get_shots(), get_players(threshold))
+
+
+@st.cache_data
+def get_percentiles(threshold):
+    """SQ2 long percentile table for players above ``threshold`` minutes."""
+    return position_percentiles(get_players(threshold), PERCENTILE_METRICS)
+
+
+def player_index(names, default=TARGET_PLAYER):
+    """Index of default in names for a selectbox, 0 if absent."""
+    names = list(names)
+    return names.index(default) if default in names else 0
