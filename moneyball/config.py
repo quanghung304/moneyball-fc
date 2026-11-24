@@ -8,6 +8,7 @@ from pathlib import Path
 BASE_URL = "https://raw.githubusercontent.com/statsbomb/open-data/master/data"
 COMPETITION_ID = 12
 SEASON_ID = 27
+COMPETITION_LABEL = "Serie A 2015/16"
 DATA_CREDIT = "Data: StatsBomb Open Data"
 
 # Folders, built from the location of this file so they work from anywhere
