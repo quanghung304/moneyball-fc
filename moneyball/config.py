@@ -76,6 +76,8 @@ FLAG_COLUMNS = [
 # Position groups
 POSITION_GROUP_ORDER = ["GK", "DEF", "MID", "WING", "FWD"]
 
+ATTACKING_GROUPS = ("MID", "WING", "FWD")
+
 POSITION_GROUPS = {
     "Goalkeeper": "GK",
     "Right Back": "DEF",

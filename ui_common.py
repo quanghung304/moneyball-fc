@@ -8,7 +8,7 @@ analysis tables computed once per parameter value, not on every click.
 import streamlit as st
 
 from moneyball.analysis import finishing_table, non_penalty_shots, position_percentiles
-from moneyball.config import MIN_MINUTES, PERCENTILE_METRICS, TARGET_PLAYER
+from moneyball.config import ATTACKING_GROUPS, MIN_MINUTES, PERCENTILE_METRICS, TARGET_PLAYER
 from moneyball.data_loader import load_tables
 from moneyball.metrics import add_per90
 
@@ -43,6 +43,14 @@ def min_minutes():
 def get_players(threshold):
     """Per-90 player table for players above ``threshold`` minutes."""
     return add_per90(_load_tables()["player_season"], min_minutes=threshold)
+
+
+@st.cache_data
+def get_attackers(threshold):
+    """Per-90 table restricted to the attacking position groups."""
+    players = get_players(threshold)
+    is_attacker = players["position_group"].isin(ATTACKING_GROUPS)
+    return players[is_attacker].reset_index(drop=True)
 
 
 @st.cache_data

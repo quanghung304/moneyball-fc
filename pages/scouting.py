@@ -4,10 +4,10 @@ import streamlit as st
 
 from moneyball import plots
 from moneyball.analysis import similar_players
-from moneyball.config import PERCENTILE_METRICS, SIMILARITY_METRICS
+from moneyball.config import ATTACKING_GROUPS, PERCENTILE_METRICS, SIMILARITY_METRICS
 from ui_common import (
+    get_attackers,
     get_percentiles,
-    get_players,
     get_tables,
     min_minutes,
     player_index,
@@ -15,13 +15,14 @@ from ui_common import (
 
 get_tables()
 threshold = min_minutes()
-players = get_players(threshold)
+players = get_attackers(threshold)
 names = players.sort_values("player_name")["player_name"].tolist()
 
 st.title("Scouting: who plays like the target? (SQ3)")
 left, middle, right = st.columns([2, 1, 1])
 target = left.selectbox("Target player", names, index=player_index(names))
 top_n = right.slider("Number of results", 3, 20, 10)
+st.caption(f"Attacking players only ({', '.join(ATTACKING_GROUPS)}).")
 
 similar = similar_players(players, target, SIMILARITY_METRICS, top_n=top_n)
 st.dataframe(

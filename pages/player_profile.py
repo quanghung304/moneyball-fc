@@ -6,9 +6,9 @@ from moneyball import plots
 from moneyball.analysis import simulate_player
 from moneyball.config import FINISHING_INTERVAL, MIN_SHOTS
 from ui_common import (
+    get_attackers,
     get_finishing,
     get_percentiles,
-    get_players,
     get_shots,
     get_tables,
     min_minutes,
@@ -17,7 +17,7 @@ from ui_common import (
 
 get_tables()  # make sure there's data to show
 threshold = min_minutes()
-players = get_players(threshold).sort_values("player_name")
+players = get_attackers(threshold).sort_values("player_name")
 finishing = get_finishing(threshold)
 names = players["player_name"].tolist()
 
