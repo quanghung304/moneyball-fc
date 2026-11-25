@@ -5,13 +5,22 @@ Run with ``streamlit run app.py`` after ``python scripts/build_dataset.py``.
 
 import streamlit as st
 
-from moneyball.config import COMPETITION_LABEL, MIN_MINUTES, DATA_CREDIT
+from moneyball.config import COMPETITION_LABEL, DATA_CREDIT, MIN_MINUTES
 
-st.set_page_config(page_title="Moneyball FC", page_icon=":material/sports_soccer:", layout="wide")
+st.set_page_config(
+    page_title="Moneyball FC", page_icon=":material/sports_soccer:", layout="wide"
+)
 
 pages = [
-    st.Page("pages/overview.py", title="Overview", icon=":material/home:", default=True),
-    st.Page("pages/player_profile.py", title="Player profile (SQ1-SQ2)", icon=":material/person:"),
+    st.Page(
+        "pages/overview.py", title="Overview", icon=":material/home:", default=True
+    ),
+    st.Page(
+        "pages/player_profile.py",
+        title="Player profile (SQ1-SQ2)",
+        icon=":material/person:",
+    ),
+    st.Page("pages/scouting.py", title="Scouting (SQ3)", icon=":material/search:"),
 ]
 
 with st.sidebar:

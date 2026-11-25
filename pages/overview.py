@@ -47,7 +47,15 @@ is_shortlisted = players["player_name"].isin(SHORTLIST)
 st.dataframe(
     players.loc[
         is_shortlisted,
-        ["player_name", "team_name", "minutes", "npxg_p90", "xa_p90", "np_goals", "npxg"],
+        [
+            "player_name",
+            "team_name",
+            "minutes",
+            "npxg_p90",
+            "xa_p90",
+            "np_goals",
+            "npxg",
+        ],
     ],
     hide_index=True,
     column_config={
