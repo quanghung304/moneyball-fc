@@ -167,7 +167,6 @@ PERCENTILE_METRICS = [
 
 # Style vector used for SQ3 similarity
 SIMILARITY_METRICS = [
-    "np_goals_p90",
     "npxg_p90",
     "np_shots_p90",
     "npxg_per_shot",
